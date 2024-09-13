@@ -12,6 +12,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call([
+            StatusSeeder::class,
+            ApproverSeeder::class,
+            ApprovalStageSeeder::class,
+            ExpenseSeeder::class,
+            ApprovalSeeder::class,
+
+        ]);
         // \App\Models\User::factory(10)->create();
 
         // \App\Models\User::factory()->create([
