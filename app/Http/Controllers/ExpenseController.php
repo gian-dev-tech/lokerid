@@ -10,52 +10,107 @@ use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
-   /**
+  /**
  * @OA\Post(
- *     path="/api/expenses",
- *     tags={"Expense"},
+ *     path="/expenses",
+ *     tags={"Expenses"},
  *     summary="Create a new expense",
- *     description="Create a new expense with a specified amount.",
+ *     description="Create a new expense by providing the amount. Returns a JSON response with the created expense or validation errors.",
+ *     operationId="createExpense",
  *     @OA\RequestBody(
  *         required=true,
  *         @OA\JsonContent(
+ *             type="object",
  *             required={"amount"},
- *             @OA\Property(property="amount", type="integer", example=100, description="The amount of the expense.")
+ *             @OA\Property(
+ *                 property="amount",
+ *                 type="integer",
+ *                 description="The amount of the expense",
+ *                 example=1000
+ *             )
  *         )
  *     ),
  *     @OA\Response(
  *         response=201,
- *         description="Expense created successfully.",
+ *         description="Expense created successfully",
  *         @OA\JsonContent(
- *             @OA\Property(property="id", type="integer", example=1),
- *             @OA\Property(property="amount", type="integer", example=100),
- *             @OA\Property(property="status_id", type="integer", example=1)
+ *             type="object",
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="Expense created successfully."),
+ *             @OA\Property(property="data", type="object",
+ *                 @OA\Property(property="id", type="integer", example=1),
+ *                 @OA\Property(property="amount", type="integer", example=1000),
+ *                 @OA\Property(property="status_id", type="integer", example=1),
+ *             )
  *         )
  *     ),
  *     @OA\Response(
- *         response=400,
- *         description="Invalid input.",
+ *         response=422,
+ *         description="Validation error",
  *         @OA\JsonContent(
- *             @OA\Property(property="error", type="string", example="Validation failed")
+ *             type="object",
+ *             @OA\Property(property="success", type="boolean", example=false),
+ *             @OA\Property(property="message", type="string", example="Validation failed."),
+ *             @OA\Property(property="errors", type="object",
+ *                 @OA\Property(property="amount", type="array", 
+ *                     @OA\Items(type="string", example="The amount field is required.")
+ *                 )
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=500,
+ *         description="Internal server error",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(property="success", type="boolean", example=false),
+ *             @OA\Property(property="message", type="string", example="Something went wrong."),
+ *             @OA\Property(property="error", type="string", example="Unexpected error occurred.")
  *         )
  *     )
  * )
  */
 
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'amount' => 'required|integer|min:1',
-        ]);
 
-        $expense = Expense::create([
-            'amount' => $request->input('amount'),
-            'status_id' => Status::where('name', 'menunggu persetujuan')->first()->id,
-        ]);
-
-        return response()->json($expense, 201);
-    }
+ public function store(Request $request)
+ {
+     try {
+         // Validasi input
+         $request->validate([
+             'amount' => 'required|integer|min:1',
+         ]);
+ 
+         // Membuat expense baru
+         $expense = Expense::create([
+             'amount' => $request->input('amount'),
+             'status_id' => Status::where('name', 'menunggu persetujuan')->first()->id,
+         ]);
+ 
+         // Mengembalikan respons JSON berhasil
+         return response()->json([
+             'success' => true,
+             'message' => 'Expense created successfully.',
+             'data' => $expense,
+         ], 201);
+ 
+     } catch (\Illuminate\Validation\ValidationException $e) {
+         // Mengembalikan respons JSON gagal dengan pesan error validasi
+         return response()->json([
+             'success' => false,
+             'message' => 'Validation failed.',
+             'errors' => $e->errors(),
+         ], 422);
+     } catch (\Exception $e) {
+         // Mengembalikan respons JSON gagal untuk error lainnya
+         return response()->json([
+             'success' => false,
+             'message' => 'Something went wrong.',
+             'error' => $e->getMessage(),
+         ], 500);
+     }
+ }
+ 
 /**
  * @OA\Patch(
  *     path="/api/expense/{id}/approve",
